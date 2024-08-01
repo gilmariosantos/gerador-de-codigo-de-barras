@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Código de Barras EAN-13</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .dark-mode {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            max-width: 100%;
+            width: 600px;
+            box-sizing: border-box;
+        }
+
+        .dark-mode .container {
+            background: #444;
+            color: #fff;
+        }
+
+        input, select {
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        .dark-mode input, .dark-mode select {
+            background: #555;
+            color: #fff;
+            border-color: #777;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            transition: background-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .dark-mode button {
+            background-color: #0056b3;
+        }
+
+        .dark-mode button:hover {
+            background-color: #003f8a;
+        }
+
+        #barcodeContainer {
+            margin-top: 20px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .config-section {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+
+        .dark-mode .error {
+            color: #ff6b6b;
+        }
+
+        .switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #historyContainer {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        #historyContainer ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #historyContainer li {
+            background: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dark-mode #historyContainer li {
+            background: #555;
+            border-color: #777;
+        }
+
+        .history-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .history-btns button {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        .copy-icon {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            cursor: pointer;
+            display: none;
+        }
+
+        #barcodeContainer:hover .copy-icon {
+            display: block;
+        }
+
+        .copy-icon img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .button-group,
+        .download-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+                padding: 10px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 8px;
+            }
+
+            .history-btns button {
+                font-size: 12px;
+                padding: 4px;
+            }
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .dark-mode .footer {
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="switch">
+        <label>
+            <input type="checkbox" id="darkModeSwitch" onclick="toggleDarkMode()">
+            Modo Escuro
+        </label>
+    </div>
+    <div class="container">
+        <h1>Gerador de Código de Barras EAN-13</h1>
+        <input type="text" id="barcodeInput" placeholder="Digite 12 ou 13 dígitos" maxlength="13" oninput="autoCompleteEAN13()">
+        <div class="config-section">
+            <label for="prefixInput">Prefixo:</label>
+            <input type="text" id="prefixInput" placeholder="789...">
+            <label for="widthInput">Largura:</label>
+            <input type="number" id="widthInput" placeholder="2" value="2" min="1" step="0.1">
+            <label for="heightInput">Altura:</label>
+            <input type="number" id="heightInput" placeholder="100" value="100" min="10" step="1">
+            <label for="unitSelect">Unidade:</label>
+            <select id="unitSelect">
+                <option value="px">Pixels</option>
+                <option value="in">Polegadas</option>
+                <option value="cm">Centímetros</option>
+                <option value="mm">Milímetros</option>
+            </select>
+            <label for="displayValueCheckbox">Exibir Valor:</label>
+            <input type="checkbox" id="displayValueCheckbox" checked>
+        </div>
+        <div class="button-group">
+            <button onclick="generateBarcode()">
+                <img src="https://img.icons8.com/material-outlined/24/000000/barcode.png" alt="Gerar Código de Barras" style="vertical-align: middle; margin-right: 8px;"> Gerar Código de Barras
+            </button>
+            <button onclick="generateRandomBarcode()">
+                <img src="https://img.icons8.com/material-outlined/24/000000/plus.png" alt="Gerar Código Aleatório" style="vertical-align: middle; margin-right: 8px;"> Gerar Código Aleatório
+            </button>
+        </div>
+        <div id="barcodeContainer">
+            <canvas id="barcode"></canvas>
+            <div class="copy-icon" onclick="copyToClipboard()">
+                <img src="https://img.icons8.com/material-outlined/24/000000/copy.png" alt="Copiar">
+            </div>
+        </div>
+        <div class="download-group">
+            <button onclick="downloadBarcode()">
+                <img src="https://img.icons8.com/material-outlined/24/000000/download.png" alt="Download" style="vertical-align: middle; margin-right: 8px;"> Download
+            </button>
+            <button onclick="clearHistory()">
+                <img src="https://img.icons8.com/material-outlined/24/000000/trash.png" alt="Limpar Histórico" style="vertical-align: middle; margin-right: 8px;"> Limpar Histórico
+            </button>
+        </div>
+        <div class="error" id="errorContainer"></div>
+        <div id="historyContainer">
+            <h3>Histórico de Códigos de Barras</h3>
+            <ul id="historyList"></ul>
+        </div>
+        <div class="footer">
+            &copy; 2024 Gtech.
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+                function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.textContent = message;
+        }
+
+        function clearError() {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.textContent = '';
+        }
+
+        function saveSettings() {
+            const settings = {
+                width: document.getElementById('widthInput').value,
+                height: document.getElementById('heightInput').value,
+                unit: document.getElementById('unitSelect').value,
+                displayValue: document.getElementById('displayValueCheckbox').checked,
+                darkMode: document.getElementById('darkModeSwitch').checked,
+                prefix: document.getElementById('prefixInput').value || ''
+            };
+            localStorage.setItem('barcodeSettings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('barcodeSettings'));
+            if (settings) {
+                document.getElementById('widthInput').value = settings.width;
+                document.getElementById('heightInput').value = settings.height;
+                document.getElementById('unitSelect').value = settings.unit;
+                document.getElementById('displayValueCheckbox').checked = settings.displayValue;
+                document.getElementById('darkModeSwitch').checked = settings.darkMode;
+                document.getElementById('prefixInput').value = settings.prefix;
+                if (settings.darkMode) {
+                    document.body.classList.add('dark-mode');
+                }
+            }
+        }
+
+        function calculateCheckDigit(code) {
+            let sum = 0;
+            for (let i = 0; i < 12; i++) {
+                sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
+            }
+            return (10 - (sum % 10)) % 10;
+        }
+
+        function autoCompleteEAN13() {
+            const input = document.getElementById('barcodeInput');
+            if (input.value.length === 12) {
+                const checkDigit = calculateCheckDigit(input.value);
+                input.value += checkDigit;
+            }
+        }
+
+        function generateBarcode() {
+            let input = document.getElementById('barcodeInput').value;
+            const width = parseFloat(document.getElementById('widthInput').value);
+            const height = parseFloat(document.getElementById('heightInput').value);
+            const unit = document.getElementById('unitSelect').value;
+            const displayValue = document.getElementById('displayValueCheckbox').checked;
+            const prefix = document.getElementById('prefixInput').value.trim();
+
+            if (input.length === 12) {
+                // Se o código tiver 12 dígitos, adicione o prefixo se disponível
+                input = (prefix || '') + input;
+                input += calculateCheckDigit(input);
+            } else if (input.length !== 13) {
+                showError("Por favor, insira exatamente 13 dígitos para o código EAN-13.");
+                return;
+            }
+
+            if (isNaN(width) || width <= 0) {
+                showError("Por favor, insira uma largura válida.");
+                return;
+            }
+
+            if (isNaN(height) || height <= 0) {
+                showError("Por favor, insira uma altura válida.");
+                return;
+            }
+
+            clearError();
+
+            JsBarcode("#barcode", input, {
+                format: "EAN13",
+                lineColor: "#000",
+                width: width,
+                height: height,
+                displayValue: displayValue,
+                margin: 10
+            });
+
+            saveSettings();
+            addToHistory(input);
+        }
+
+        function generateRandomBarcode() {
+            const prefix = document.getElementById('prefixInput').value.trim();
+            let randomNumber = Math.floor(Math.random() * 1000000000000).toString().padStart(12 - prefix.length, '0');
+            // Certifique-se de que o número aleatório tenha o comprimento correto após adicionar o prefixo
+            randomNumber = randomNumber.substring(0, 12 - prefix.length); 
+            const codeWithPrefix = (prefix || '') + randomNumber;
+            const checkDigit = calculateCheckDigit(codeWithPrefix);
+            document.getElementById('barcodeInput').value = codeWithPrefix + checkDigit;
+            generateBarcode();
+        }
+
+        function downloadBarcode() {
+            const canvas = document.querySelector("#barcode");
+            if (canvas) {
+                const link = document.createElement("a");
+                link.href = canvas.toDataURL("image/png");
+                link.download = `${document.getElementById('barcodeInput').value}.png`;
+                link.click();
+            } else {
+                showError("Gere o código de barras primeiro.");
+            }
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            saveSettings();
+        }
+
+        function addToHistory(code) {
+            const historyList = document.getElementById('historyList');
+            // Verifica se o código já está no histórico
+            if ([...historyList.querySelectorAll('span')].some(span => span.textContent === code)) {
+                return;
+            }
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                <span>${code}</span>
+                <div class="history-btns">
+                    <button onclick="reGenerateBarcode('${code}')">Regerar</button>
+                    <button onclick="downloadFromHistory('${code}')">Download</button>
+                </div>
+            `;
+            historyList.appendChild(listItem);
+            saveHistory();
+        }
+
+        function saveHistory() {
+            const historyItems = [];
+            document.querySelectorAll('#historyList li span').forEach(span => {
+                historyItems.push(span.textContent);
+            });
+            localStorage.setItem('barcodeHistory', JSON.stringify(historyItems));
+        }
+
+        function loadHistory() {
+            const historyItems = JSON.parse(localStorage.getItem('barcodeHistory'));
+            if (historyItems) {
+                // Limpa o histórico atual antes de adicionar os novos itens
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = '';
+                historyItems.forEach(code => addToHistory(code));
+            }
+        }
+
+        function reGenerateBarcode(code) {
+            document.getElementById('barcodeInput').value = code;
+            generateBarcode();
+        }
+
+        function downloadFromHistory(code) {
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, code, {
+                format: "EAN13",
+                lineColor: "#000",
+                width: parseFloat(document.getElementById('widthInput').value),
+                height: parseFloat(document.getElementById('heightInput').value),
+                displayValue: document.getElementById('displayValueCheckbox').checked,
+                margin: 10
+            });
+            const link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = `${code}.png`;
+            link.click();
+        }
+
+        function copyToClipboard() {
+            const barcodeValue = document.getElementById('barcodeInput').value;
+            navigator.clipboard.writeText(barcodeValue).then(() => {
+                alert('Código de barras copiado!');
+            }).catch(err => {
+                showError('Falha ao copiar o código de barras.');
+            });
+        }
+
+        function clearHistory() {
+            if (confirm("Tem certeza de que deseja limpar o histórico?")) {
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = ''; // Limpa a lista de histórico
+                localStorage.removeItem('barcodeHistory'); // Remove do localStorage
+            }
+        }
+
+        window.onload = function() {
+            loadSettings();
+            loadHistory();
+            // Adicionar o elemento canvas dinamicamente
+            const container = document.getElementById('barcodeContainer');
+            const canvas = document.createElement('canvas');
+            canvas.id = 'barcode';
+            container.appendChild(canvas);
+        }
+    </script>
+</body>
+</html>
